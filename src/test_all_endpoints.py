@@ -3,9 +3,8 @@ import base64
 import pandas as pd
 import json
 
-service_user = "SERVICE-33880"
-token = "Et4Gy4oUD8DMTW7mAm01c5te4x2QEny70WEb81g5"
-
+service_user = os.getenv("HIBOB_SERVICE_USER")
+token = os.getenv("HIBOB_TOKEN")
 credentials = f"{service_user}:{token}"
 encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
