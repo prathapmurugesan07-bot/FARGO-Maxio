@@ -36,7 +36,7 @@ print("UPLOADING TO AZURE BLOB STORAGE")
 print("="*80)
 
 try:
-    blob_name = "hibob/employees.csv"
+    blob_name = "hibob/employees_data/employees.csv"
     csv_data = df_employees.to_csv(index=False)
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
     blob_client.upload_blob(csv_data, overwrite=True)
