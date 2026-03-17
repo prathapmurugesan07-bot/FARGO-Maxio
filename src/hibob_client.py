@@ -31,7 +31,6 @@ class HiBobClient:
     def _request(self, method:str, endpoint:str, payload:dict=None, params:dict=None, retries:int=3)->dict:
         """
         Generic request handler
-
         """
         url=f"{self.base_url}{endpoint}"
 
@@ -102,12 +101,4 @@ class HiBobClient:
         data = self.paginate("/people/search", payload=payload, data_key="employees")
         return pd.json_normalize(data)
 
-    def fetch(self, endpoint: str, method: str = "GET", payload: dict = None, params: dict = None, data_key: str = None) -> pd.DataFrame:
-        """
-        Generic fetch for any endpoint
-        """
-        data = self._request(method, endpoint, payload=payload, params=params)
-        if data_key:
-            return pd.json_normalize(data.get(data_key, []))
-        else:
-            return pd.json_normalize(data)
+
