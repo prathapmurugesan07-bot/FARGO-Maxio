@@ -1,6 +1,4 @@
 pandas
-pyarrow
 python-dotenv
 requests
-requests-oauthlib
 azure-storage-blob

@@ -275,3 +275,114 @@ class MaxioClient:
         except Exception as e:
             logger.error(f"❌ Failed to fetch invoices: {str(e)}")
             return pd.DataFrame()
+
+    def get_transactions(self) -> pd.DataFrame:
+        """
+        Fetch all transactions from Maxio API and return as DataFrame.
+        
+        Returns:
+            DataFrame with transaction data
+        """
+        try:
+            logger.info("🔍 Fetching transactions from Maxio API...")
+            transactions = self.paginate("transactions")
+            
+            if not transactions:
+                logger.warning("⚠️  No transactions found")
+                return pd.DataFrame()
+            
+            df = pd.json_normalize(transactions)
+            logger.info(f"✓ Successfully fetched {len(df)} transactions")
+            return df
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch transactions: {str(e)}")
+            return pd.DataFrame()
+
+    def get_payments(self) -> pd.DataFrame:
+        """
+        Fetch all payments from Maxio API and return as DataFrame.
+        Includes account receivable data.
+        
+        Returns:
+            DataFrame with payment data
+        """
+        try:
+            logger.info("🔍 Fetching payments from Maxio API...")
+            payments = self.paginate("payments")
+            
+            if not payments:
+                logger.warning("⚠️  No payments found")
+                return pd.DataFrame()
+            
+            df = pd.json_normalize(payments)
+            logger.info(f"✓ Successfully fetched {len(df)} payments")
+            return df
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch payments: {str(e)}")
+            return pd.DataFrame()
+
+    def get_revenue_entries(self) -> pd.DataFrame:
+        """
+        Fetch all revenue entries from Maxio API and return as DataFrame.
+        
+        Returns:
+            DataFrame with revenue entry data
+        """
+        try:
+            logger.info("🔍 Fetching revenue entries from Maxio API...")
+            revenue_entries = self.paginate("revenue_entries")
+            
+            if not revenue_entries:
+                logger.warning("⚠️  No revenue entries found")
+                return pd.DataFrame()
+            
+            df = pd.json_normalize(revenue_entries)
+            logger.info(f"✓ Successfully fetched {len(df)} revenue entries")
+            return df
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch revenue entries: {str(e)}")
+            return pd.DataFrame()
+
+    def get_reports(self) -> pd.DataFrame:
+        """
+        Fetch all report definitions from Maxio API and return as DataFrame.
+        
+        Returns:
+            DataFrame with report definition data
+        """
+        try:
+            logger.info("🔍 Fetching report definitions from Maxio API...")
+            reports = self.paginate("reports/definitions")
+            
+            if not reports:
+                logger.warning("⚠️  No report definitions found")
+                return pd.DataFrame()
+            
+            df = pd.json_normalize(reports)
+            logger.info(f"✓ Successfully fetched {len(df)} report definitions")
+            return df
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch report definitions: {str(e)}")
+            return pd.DataFrame()
+
+    def get_expenses(self) -> pd.DataFrame:
+        """
+        Fetch all expenses from Maxio API and return as DataFrame.
+        
+        Returns:
+            DataFrame with expense data
+        """
+        try:
+            logger.info("🔍 Fetching expenses from Maxio API...")
+            expenses = self.paginate("expenses")
+            
+            if not expenses:
+                logger.warning("⚠️  No expenses found")
+                return pd.DataFrame()
+            
+            df = pd.json_normalize(expenses)
+            logger.info(f"✓ Successfully fetched {len(df)} expenses")
+            return df
+        except Exception as e:
+            logger.error(f"❌ Failed to fetch expenses: {str(e)}")
+            return pd.DataFrame()

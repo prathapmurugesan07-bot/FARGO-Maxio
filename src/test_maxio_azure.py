@@ -25,8 +25,18 @@ blob_service_client = BlobServiceClient(
 )
 container_name = os.getenv('AZURE_CONTAINER_NAME')
 
-timestamp = datetime.now().strftime("%Y/%m/%d")
-run_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+run_started_at = datetime.now()
+run_year = run_started_at.strftime("%Y")
+run_month = run_started_at.strftime("%m")
+run_day = run_started_at.strftime("%d")
+run_time = run_started_at.strftime("%Y%m%d_%H%M%S")
+
+
+def build_blob_name(endpoint_key):
+    return (
+        f"maxio/{endpoint_key}/{run_year}/{run_month}/{run_day}/"
+        f"{endpoint_key}_{run_time}.csv"
+    )
 
 print("\n" + "="*70)
 print("MAXIO API TO AZURE INTEGRATION TEST")
@@ -39,7 +49,7 @@ df_customers = client.get_customers()
 print(f"✓ Fetched {len(df_customers)} customers from API")
 
 if not df_customers.empty:
-    blob_name = f"maxio/{timestamp}/customers/customers_{run_time}.csv"
+    blob_name = build_blob_name("customers")
     csv_data = df_customers.to_csv(index=False)
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
     blob_client.upload_blob(csv_data, overwrite=True)
@@ -55,7 +65,7 @@ df_invoices = client.get_invoices()
 print(f"✓ Fetched {len(df_invoices)} invoices from API")
 
 if not df_invoices.empty:
-    blob_name = f"maxio/{timestamp}/invoices/invoices_{run_time}.csv"
+    blob_name = build_blob_name("invoices")
     csv_data = df_invoices.to_csv(index=False)
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
     blob_client.upload_blob(csv_data, overwrite=True)
@@ -69,16 +79,15 @@ print("AZURE FOLDER STRUCTURE")
 print("="*70)
 print(f"""
 ✓ Container: {container_name}
-✓ Folder path: maxio/{timestamp}/
+✓ Folder path pattern: maxio/<endpoint>/{run_year}/{run_month}/{run_day}/
 
 📁 maxio/
-   📁 2026/03/17/
-      📁 customers/
-         📄 customers_20260317_HHMMSS.csv     (223 records, 88 columns)
-      📁 invoices/
-         📄 invoices_20260317_HHMMSS.csv      (3000+ records)
-      📁 subscriptions/
-         📄 subscriptions_20260317_HHMMSS.csv (if available)
+   📁 customers/
+      📁 {run_year}/{run_month}/{run_day}/
+         📄 customers_{run_time}.csv          (223 records, 88 columns)
+   📁 invoices/
+      📁 {run_year}/{run_month}/{run_day}/
+         📄 invoices_{run_time}.csv           (3000+ records)
 """)
 
 print("✓ Integration complete!")
