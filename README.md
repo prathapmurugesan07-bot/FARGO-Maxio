@@ -4,11 +4,11 @@ This folder contains the Maxio-specific code and tests extracted from the main w
 
 ## Contents
 
-- `src/maxio_client.py`
-- `src/maxio_test.py`
-- `src/azure_ingest_maxio.py`
-- `src/test_maxio_azure.py`
-- `test_maxio_token.py`
+- `src/extract/maxio_client.py`
+- `src/extract/utils.py`
+- `src/load/azure_ingest_maxio.py`
+- `src/load/utils.py`
+- `src/load/test_maxio.py`
 
 ## Setup
 
@@ -22,7 +22,6 @@ cp .env.example .env
 ## Run
 
 ```bash
-python src/maxio_test.py
-python src/azure_ingest_maxio.py
-python test_maxio_token.py
+python src/load/test_maxio.py
+python src/load/azure_ingest_maxio.py
 ```
