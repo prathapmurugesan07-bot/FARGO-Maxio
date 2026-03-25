@@ -3,7 +3,7 @@ import re
 import time
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from dotenv import load_dotenv
@@ -285,8 +285,9 @@ def run_ingestion(
     blob_name_builder: BlobNameBuilder = build_blob_name,
     create_folder_structure: bool = True,
     dataframe_transform: DataFrameTransform = identity_dataframe_transform,
+    run_context: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
-    run_context = create_run_context()
+    run_context = run_context or create_run_context()
     results = {config["key"]: create_result() for config in ENDPOINTS}
 
     for config in ENDPOINTS:
@@ -435,4 +436,58 @@ def run_azure_staging_ingestion() -> None:
         run_context,
         destination_title="FILES WRITTEN TO AZURE STAGING",
         destination_lines=build_staging_destination_lines(results),
+    )
+
+
+def run_azure_raw_and_staging_ingestion() -> None:
+    configure_logging()
+
+    # RAW (hierarchical, timestamped)
+    raw_settings = load_ingestion_settings()
+    validate_ingestion_settings(raw_settings)
+
+    print_section("INITIALIZING MAXIO API CLIENT")
+    client = create_maxio_client(raw_settings)
+    print("Maxio client initialized successfully")
+
+    print_section("INITIALIZING AZURE BLOB STORAGE CLIENT")
+    blob_service_client = create_blob_service_client(raw_settings)
+    print("Azure Blob Storage client initialized successfully")
+
+    shared_run_context = create_run_context()
+
+    raw_results, _ = run_ingestion(
+        client=client,
+        blob_service_client=blob_service_client,
+        settings=raw_settings,
+        run_context=shared_run_context,
+    )
+    print_summary(
+        raw_results,
+        raw_settings["container_name"],
+        shared_run_context,
+        destination_title="FOLDER STRUCTURE CREATED IN AZURE (RAW)",
+        destination_lines=build_hierarchical_destination_lines(raw_results, shared_run_context),
+    )
+
+    # STAGING (flat, latest-only)
+    staging_settings = load_ingestion_settings()
+    staging_settings["container_name"] = os.getenv("AZURE_STAGING_CONTAINER_NAME", "staging")
+    validate_ingestion_settings(staging_settings)
+
+    staging_results, _ = run_ingestion(
+        client=client,
+        blob_service_client=blob_service_client,
+        settings=staging_settings,
+        blob_name_builder=build_staging_blob_name,
+        create_folder_structure=False,
+        dataframe_transform=transform_staging_dataframe,
+        run_context=shared_run_context,
+    )
+    print_summary(
+        staging_results,
+        staging_settings["container_name"],
+        shared_run_context,
+        destination_title="FILES WRITTEN TO AZURE STAGING (LATEST ONLY)",
+        destination_lines=build_staging_destination_lines(staging_results),
     )
