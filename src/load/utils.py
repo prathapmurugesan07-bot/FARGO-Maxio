@@ -1,8 +1,9 @@
 import os
+import re
 import time
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from dotenv import load_dotenv
@@ -20,6 +21,10 @@ from extract.utils import (
 
 
 load_dotenv()
+
+
+BlobNameBuilder = Callable[[str, Dict[str, Any]], str]
+DataFrameTransform = Callable[[Any], Any]
 
 
 def load_azure_settings() -> Dict[str, Any]:
@@ -96,8 +101,33 @@ def build_blob_name(endpoint_key: str, run_context: Dict[str, Any]) -> str:
     return f"{build_folder_prefix(endpoint_key, run_context)}{endpoint_key}_{run_context['run_time']}.csv"
 
 
+def build_staging_blob_name(endpoint_key: str, run_context: Dict[str, Any]) -> str:
+    del run_context
+    return f"{endpoint_key}.csv"
+
+
 def build_folder_placeholder_name(endpoint_key: str, run_context: Dict[str, Any]) -> str:
     return f"{build_folder_prefix(endpoint_key, run_context)}_folder_placeholder"
+
+
+def identity_dataframe_transform(dataframe):
+    return dataframe
+
+
+def normalize_staging_column_name(column_name: Any) -> str:
+    normalized = str(column_name).replace(".", "_")
+    normalized = re.sub(r"[^a-zA-Z0-9_]", "_", normalized)
+    normalized = re.sub(r"_+", "_", normalized)
+    return normalized.lower()
+
+
+def transform_staging_dataframe(dataframe):
+    staged_dataframe = dataframe.copy()
+    staged_dataframe.columns = [
+        normalize_staging_column_name(column_name)
+        for column_name in staged_dataframe.columns
+    ]
+    return staged_dataframe
 
 
 def ensure_folder_structure(
@@ -200,26 +230,44 @@ def fetch_and_upload_endpoint(
     container_name: str,
     run_context: Dict[str, Any],
     settings: Dict[str, Any],
+    blob_name_builder: BlobNameBuilder,
+    create_folder_structure: bool,
+    dataframe_transform: DataFrameTransform,
 ) -> Dict[str, Any]:
+    import logging
+
+    logger = logging.getLogger(__name__)
     endpoint_key = config["key"]
 
-    if not ensure_folder_structure(
-        blob_service_client=blob_service_client,
-        container_name=container_name,
-        endpoint_key=endpoint_key,
-        run_context=run_context,
-        settings=settings,
-    ):
-        return create_result(
-            status="UPLOAD_FAILED",
-            error="Failed to create Azure folder structure placeholder.",
-        )
+    if create_folder_structure:
+        if not ensure_folder_structure(
+            blob_service_client=blob_service_client,
+            container_name=container_name,
+            endpoint_key=endpoint_key,
+            run_context=run_context,
+            settings=settings,
+        ):
+            return create_result(
+                status="UPLOAD_FAILED",
+                error="Failed to create Azure folder structure placeholder.",
+            )
 
     dataframe, result = fetch_endpoint_result(client, config)
     if result["status"] != "SUCCESS":
         return result
 
-    blob_name = build_blob_name(endpoint_key, run_context)
+    try:
+        dataframe = dataframe_transform(dataframe)
+    except Exception as exc:
+        logger.error("Failed to transform %s for upload: %s", endpoint_key, exc)
+        return create_result(
+            status="UPLOAD_FAILED",
+            records=len(dataframe),
+            columns=len(dataframe.columns),
+            error=str(exc),
+        )
+
+    blob_name = blob_name_builder(endpoint_key, run_context)
     return upload_dataframe_to_azure(
         dataframe=dataframe,
         blob_service_client=blob_service_client,
@@ -234,6 +282,9 @@ def run_ingestion(
     client,
     blob_service_client: BlobServiceClient,
     settings: Dict[str, Any],
+    blob_name_builder: BlobNameBuilder = build_blob_name,
+    create_folder_structure: bool = True,
+    dataframe_transform: DataFrameTransform = identity_dataframe_transform,
 ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Any]]:
     run_context = create_run_context()
     results = {config["key"]: create_result() for config in ENDPOINTS}
@@ -247,15 +298,37 @@ def run_ingestion(
             container_name=settings["container_name"],
             run_context=run_context,
             settings=settings,
+            blob_name_builder=blob_name_builder,
+            create_folder_structure=create_folder_structure,
+            dataframe_transform=dataframe_transform,
         )
 
     return results, run_context
+
+
+def build_hierarchical_destination_lines(
+    results: Dict[str, Dict[str, Any]],
+    run_context: Dict[str, Any],
+) -> List[str]:
+    lines = ["  maxio/"]
+    for endpoint_key in results:
+        lines.append(
+            f"    {endpoint_key}/"
+            f"{run_context['year']}/{run_context['month']}/{run_context['day']}/"
+        )
+    return lines
+
+
+def build_staging_destination_lines(results: Dict[str, Dict[str, Any]]) -> List[str]:
+    return [f"  {endpoint_key}.csv" for endpoint_key in results]
 
 
 def print_summary(
     results: Dict[str, Dict[str, Any]],
     container_name: str,
     run_context: Dict[str, Any],
+    destination_title: str,
+    destination_lines: List[str],
 ) -> None:
     total_endpoints = len(results)
     uploaded_count = sum(1 for result in results.values() if result["status"] == "UPLOADED")
@@ -301,13 +374,9 @@ def print_summary(
     if failed_upload_records:
         print(f"Records fetched but not uploaded: {failed_upload_records:,}")
 
-    print("\nFOLDER STRUCTURE CREATED IN AZURE:")
-    print("  maxio/")
-    for endpoint_key in results:
-        print(
-            f"    {endpoint_key}/"
-            f"{run_context['year']}/{run_context['month']}/{run_context['day']}/"
-        )
+    print(f"\n{destination_title}:")
+    for line in destination_lines:
+        print(line)
     print("\n" + "=" * 80 + "\n")
 
 
@@ -329,4 +398,41 @@ def run_azure_ingestion() -> None:
         blob_service_client=blob_service_client,
         settings=settings,
     )
-    print_summary(results, settings["container_name"], run_context)
+    print_summary(
+        results,
+        settings["container_name"],
+        run_context,
+        destination_title="FOLDER STRUCTURE CREATED IN AZURE",
+        destination_lines=build_hierarchical_destination_lines(results, run_context),
+    )
+
+
+def run_azure_staging_ingestion() -> None:
+    configure_logging()
+    settings = load_ingestion_settings()
+    settings["container_name"] = os.getenv("AZURE_STAGING_CONTAINER_NAME", "staging")
+    validate_ingestion_settings(settings)
+
+    print_section("INITIALIZING MAXIO API CLIENT")
+    client = create_maxio_client(settings)
+    print("Maxio client initialized successfully")
+
+    print_section("INITIALIZING AZURE BLOB STORAGE CLIENT")
+    blob_service_client = create_blob_service_client(settings)
+    print("Azure Blob Storage client initialized successfully")
+
+    results, run_context = run_ingestion(
+        client=client,
+        blob_service_client=blob_service_client,
+        settings=settings,
+        blob_name_builder=build_staging_blob_name,
+        create_folder_structure=False,
+        dataframe_transform=transform_staging_dataframe,
+    )
+    print_summary(
+        results,
+        settings["container_name"],
+        run_context,
+        destination_title="FILES WRITTEN TO AZURE STAGING",
+        destination_lines=build_staging_destination_lines(results),
+    )

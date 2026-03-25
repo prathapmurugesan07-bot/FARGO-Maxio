@@ -7,6 +7,7 @@ This folder contains the Maxio-specific code and tests extracted from the main w
 - `src/extract/maxio_client.py`
 - `src/extract/utils.py`
 - `src/load/azure_ingest_maxio.py`
+- `src/load/azure_ingest_maxio_staging.py`
 - `src/load/utils.py`
 - `src/load/test_maxio.py`
 
@@ -24,4 +25,8 @@ cp .env.example .env
 ```bash
 python src/load/test_maxio.py
 python src/load/azure_ingest_maxio.py
+python src/load/azure_ingest_maxio_staging.py
 ```
+
+The staging loader writes flat CSV files directly into the `staging` container root.
+Set `AZURE_STAGING_CONTAINER_NAME=staging` only if you want to override that default.

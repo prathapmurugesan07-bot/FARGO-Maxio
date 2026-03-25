@@ -194,4 +194,6 @@ def print_client_test_summary(results: Dict[str, Dict[str, Any]]) -> None:
         print(f"  {endpoint_name:<18} | " + " | ".join(details))
 
     print("-" * 80)
-    print("\nRun ingestion with: python src/load/azure_ingest_maxio.py\n")
+    print("\nRun ingestion with:")
+    print("  python src/load/azure_ingest_maxio.py")
+    print("  python src/load/azure_ingest_maxio_staging.py\n")
