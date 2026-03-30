@@ -78,7 +78,7 @@ for endpoint_name, endpoint_config in endpoints.items():
                 response = requests.post(endpoint_config["url"], headers=headers, json=endpoint_config.get("payload"), timeout=10)
             
             status_code = response.status_code
-            status_text = "" if status_code == 200 else "❌"
+            status_text = "✅" if status_code == 200 else "❌"
             
             # Try to parse response
             try:
@@ -109,18 +109,18 @@ for endpoint_name, endpoint_config in endpoints.items():
             result = {
                 "Endpoint": endpoint_name,
                 "Method": method,
-                "Status": f"Error",
+                "Status": f"❌ Error",
                 "Response Preview": str(e)[:80]
             }
             results.append(result)
-            print(f"   {method:4} → Error: {str(e)[:60]}")
+            print(f"   {method:4} → ❌ Error: {str(e)[:60]}")
 
 # Summary
 print("\n" + "="*100)
-print("SUMMARY - WORKING ENDPOINTS (200)")
+print("SUMMARY - WORKING ENDPOINTS (✅200)")
 print("="*100)
 
-working = [r for r in results if "" in r["Status"]]
+working = [r for r in results if "✅" in r["Status"]]
 if working:
     df = pd.DataFrame(working)
     print(df.to_string(index=False))
