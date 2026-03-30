@@ -411,7 +411,7 @@ def run_azure_ingestion() -> None:
 def run_azure_staging_ingestion() -> None:
     configure_logging()
     settings = load_ingestion_settings()
-    settings["container_name"] = os.getenv("AZURE_STAGING_CONTAINER_NAME", "staging")
+    settings["container_name"] = os.getenv("AZURE_STAGING_CONTAINER_NAME", "maxio")
     validate_ingestion_settings(settings)
 
     print_section("INITIALIZING MAXIO API CLIENT")
