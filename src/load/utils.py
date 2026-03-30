@@ -26,12 +26,15 @@ load_dotenv()
 BlobNameBuilder = Callable[[str, Dict[str, Any]], str]
 DataFrameTransform = Callable[[Any], Any]
 
+RAW_CONTAINER_NAME = "raw"
+STAGING_CONTAINER_NAME = "maxio"
+
 
 def load_azure_settings() -> Dict[str, Any]:
     return {
         "azure_account_name": os.getenv("AZURE_STORAGE_ACCOUNT"),
         "azure_account_key": os.getenv("AZURE_STORAGE_KEY"),
-        "container_name": os.getenv("AZURE_CONTAINER_NAME"),
+        "container_name": RAW_CONTAINER_NAME,
         "azure_max_block_size": int(os.getenv("AZURE_MAX_BLOCK_SIZE_MB", "4")) * 1024 * 1024,
         "azure_max_single_put_size": int(os.getenv("AZURE_MAX_SINGLE_PUT_SIZE_MB", "4")) * 1024 * 1024,
         "azure_upload_timeout": int(os.getenv("AZURE_UPLOAD_TIMEOUT_SEC", "900")),
@@ -50,9 +53,9 @@ def load_ingestion_settings() -> Dict[str, Any]:
 
 def validate_azure_settings(settings: Dict[str, Any]) -> None:
     required_vars = {
-        "AZURE_STORAGE_ACCOUNT": settings["azure_account_name"],
-        "AZURE_STORAGE_KEY": settings["azure_account_key"],
-        "AZURE_CONTAINER_NAME": settings["container_name"],
+        "azure_account_name": settings["azure_account_name"],
+        "azure_account_key": settings["azure_account_key"],
+        "container_name": settings["container_name"],
     }
     missing_vars = [key for key, value in required_vars.items() if not value]
     if missing_vars:
@@ -411,7 +414,7 @@ def run_azure_ingestion() -> None:
 def run_azure_staging_ingestion() -> None:
     configure_logging()
     settings = load_ingestion_settings()
-    settings["container_name"] = os.getenv("AZURE_STAGING_CONTAINER_NAME", "maxio")
+    settings["container_name"] = STAGING_CONTAINER_NAME
     validate_ingestion_settings(settings)
 
     print_section("INITIALIZING MAXIO API CLIENT")
@@ -472,7 +475,7 @@ def run_azure_raw_and_staging_ingestion() -> None:
 
     # STAGING (flat, latest-only)
     staging_settings = load_ingestion_settings()
-    staging_settings["container_name"] = os.getenv("AZURE_STAGING_CONTAINER_NAME", "staging")
+    staging_settings["container_name"] = STAGING_CONTAINER_NAME
     validate_ingestion_settings(staging_settings)
 
     staging_results, _ = run_ingestion(
