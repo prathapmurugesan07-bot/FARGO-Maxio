@@ -69,29 +69,14 @@ def upload_dataframe_to_blob(
     print(f"\n Uploaded {label} to {container_name}: {blob_name}")
 
 
-def get_container_name(env_var: str, description: str, default: str) -> str:
-    name = os.getenv(env_var) or default
-    if not name:
-        raise ValueError(f"Missing environment variable for {description}.")
-    return name
-
-
 def main() -> None:
     hibob_service_user = os.getenv("HIBOB_SERVICE_USER")
     hibob_token = os.getenv("HIBOB_TOKEN")
     if not hibob_service_user or not hibob_token:
         raise ValueError("Missing HiBob credentials in environment.")
 
-    raw_container = get_container_name(
-        "AZURE_CONTAINER_NAME",
-        "raw container",
-        DEFAULT_RAW_CONTAINER_NAME,
-    )
-    hibob_container = get_container_name(
-        "AZURE_CONTAINER_NAME_2",
-        "HiBob container",
-        DEFAULT_HIBOB_CONTAINER_NAME,
-    )
+    raw_container = DEFAULT_RAW_CONTAINER_NAME
+    hibob_container = DEFAULT_HIBOB_CONTAINER_NAME
     azure_account_name = os.getenv("AZURE_STORAGE_ACCOUNT")
     azure_account_key = os.getenv("AZURE_STORAGE_KEY")
     if not azure_account_name or not azure_account_key:
