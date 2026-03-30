@@ -66,7 +66,7 @@ def upload_dataframe_to_blob(
         overwrite=True,
         content_settings=ContentSettings(content_type="text/csv; charset=utf-8"),
     )
-    print(f"\n✅ Uploaded {label} to {container_name}: {blob_name}")
+    print(f"\n Uploaded {label} to {container_name}: {blob_name}")
 
 
 def get_container_name(env_var: str, description: str, default: str) -> str:
@@ -134,7 +134,7 @@ def main() -> None:
     normalized_employees = df_employees.copy()
     normalize_dataframe_columns(normalized_employees)
 
-    staging_blob_name = "employees_data/employees.csv"
+    staging_blob_name = "employees.csv"
     print("\n" + "=" * 80)
     print("UPLOADING NORMALIZED FILE TO AZURE (HIBOB CONTAINER)")
     print("=" * 80)
